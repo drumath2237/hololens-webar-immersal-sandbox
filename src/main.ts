@@ -67,23 +67,33 @@ window.addEventListener("DOMContentLoaded", async () => {
       button.scaling = new Vector3(0.15, 0.15, 0.3);
     };
 
-    button.onPointerClickObservable.add(() => {
-      button.text += "!";
-      navigator.mediaDevices.enumerateDevices().then((infos) => {
-        infos.forEach((info) => {
-          console.log(info);
-        });
+    const videoElement = <HTMLVideoElement>document.getElementById("video");
+    videoElement.autoplay = true;
+    const videoCanvas = <HTMLCanvasElement>(
+      document.getElementById("videoCapture")
+    );
+
+    navigator.mediaDevices
+      .getUserMedia({
+        audio: false,
+        video: true,
+      })
+      .then((stream) => {
+        videoElement.srcObject = stream;
+        setTimeout(() => {
+          videoCanvas.width = 1270;
+          videoCanvas.height = 720;
+          button.imageUrl = videoCanvas.toDataURL();
+        }, 2000);
       });
-      navigator.mediaDevices
-        .getUserMedia({
-          audio: false,
-          video: true,
-        })
-        .then((stream) => {
-          stream.getVideoTracks().forEach((track) => {
-            console.log(track);
-          });
-        });
+
+    navigator.mediaDevices.enumerateDevices().then((infos) => {
+      console.log(infos);
+    });
+
+    button.onPointerDownObservable.add(() => {
+      videoCanvas.getContext("2d")!.drawImage(videoElement, 0, 0, 1270, 720);
+      button.imageUrl = videoCanvas.toDataURL();
     });
 
     // webxr settings
