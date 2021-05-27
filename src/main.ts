@@ -69,72 +69,31 @@ window.addEventListener("DOMContentLoaded", async () => {
 
     button.onPointerClickObservable.add(() => {
       button.text += "!";
-    });
-
-    // physics object settings
-
-    const ground = Mesh.CreateGround("ground", 1, 1, 2, scene);
-    ground.position = new Vector3(0, -0.5, 1);
-    ground.physicsImpostor = new PhysicsImpostor(
-      ground,
-      PhysicsImpostor.BoxImpostor,
-      {
-        mass: 0,
-        friction: 0.7,
-        restitution: 0.7,
-      }
-    );
-
-    button.onPointerDownObservable.add(() => {
-      const physicsCube = Mesh.CreateBox("physicsCube", 0.1, scene);
-      physicsCube.position = new Vector3(0, 0.5, 1);
-      physicsCube.rotation = new Vector3(
-        Math.random() * Math.PI * 2,
-        Math.random() * Math.PI * 2,
-        Math.random() * Math.PI * 2
-      );
-      physicsCube.physicsImpostor = new PhysicsImpostor(
-        physicsCube,
-        PhysicsImpostor.BoxImpostor,
-        {
-          mass: 0.1,
-        }
-      );
+      navigator.mediaDevices.enumerateDevices().then((infos) => {
+        infos.forEach((info) => {
+          console.log(info);
+        });
+      });
+      navigator.mediaDevices
+        .getUserMedia({
+          audio: false,
+          video: true,
+        })
+        .then((stream) => {
+          stream.getVideoTracks().forEach((track) => {
+            console.log(track);
+          });
+        });
     });
 
     // webxr settings
 
-    const xr = await scene.createDefaultXRExperienceAsync({
+    await scene.createDefaultXRExperienceAsync({
       uiOptions: {
         sessionMode: "immersive-ar",
         referenceSpaceType: "unbounded",
       },
     });
-
-    xr.baseExperience.onInitialXRPoseSetObservable.add((camera) => {
-      camera.position = new Vector3(0, 0, 2);
-    });
-
-    xr.baseExperience.featuresManager.enableFeature(
-      WebXRFeatureName.HAND_TRACKING,
-      "latest",
-      {
-        xrInput: xr.input,
-        jointMeshes: {
-          enablePhysics: true,
-          sourceMesh: Mesh.CreateIcoSphere(
-            "iso",
-            { radius: 0.5, flat: true, subdivisions: 1 },
-            scene
-          ),
-          physicsProps: {
-            friction: 0.5,
-          },
-        },
-      } as IWebXRHandTrackingOptions
-    );
-
-    // scene.createDefaultEnvironment();
 
     engine.runRenderLoop(() => {
       scene.render();
