@@ -17,6 +17,9 @@ import {
 } from "@babylonjs/gui";
 import "./style/style.scss";
 
+import CameraIntrinsics from "./types/hololens-camera";
+import * as ImmersalAPI from "./types/immersal-api";
+
 window.addEventListener("DOMContentLoaded", async () => {
   const renderCanvas = <HTMLCanvasElement>(
     document.getElementById("renderCanvas")
@@ -73,11 +76,16 @@ window.addEventListener("DOMContentLoaded", async () => {
 
     const logPlane = Mesh.CreatePlane("logPlane", 2, scene);
     logPlane.position = new Vector3(0, 0.3, 1);
-    const advancedTexture = AdvancedDynamicTexture.CreateForMesh(logPlane, 1024, 1024);
+    const advancedTexture = AdvancedDynamicTexture.CreateForMesh(
+      logPlane,
+      1024,
+      1024
+    );
 
     const logTextBlock = new TextBlock("logTextBlock", "no log");
     logTextBlock.color = "white";
-    logTextBlock.text = "hogeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
+    logTextBlock.text =
+      "hogeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
     advancedTexture.addControl(logTextBlock);
 
     const videoElement = <HTMLVideoElement>document.getElementById("video");
@@ -106,7 +114,29 @@ window.addEventListener("DOMContentLoaded", async () => {
 
     button.onPointerDownObservable.add(() => {
       videoCanvas.getContext("2d")!.drawImage(videoElement, 0, 0, 1270, 720);
-      button.imageUrl = videoCanvas.toDataURL();
+      // button.imageUrl = videoCanvas.toDataURL();
+
+      const req: ImmersalAPI.ImmersalLocalizeRequest = {
+        token: "",
+        fx: CameraIntrinsics.focalLength.x,
+        fy: CameraIntrinsics.focalLength.y,
+        ox: CameraIntrinsics.principalOffset.x,
+        oy: CameraIntrinsics.principalOffset.y,
+        b64: videoCanvas.toDataURL(),
+        mapIds: [{ id: 0 }],
+      };
+      fetch(ImmersalAPI.immersalLocalizeURL, {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(req),
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          logTextBlock.text = data;
+        });
     });
 
     // webxr settings
