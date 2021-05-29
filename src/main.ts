@@ -5,14 +5,16 @@ import {
   Color3,
   Engine,
   HemisphericLight,
-  IWebXRHandTrackingOptions,
   Mesh,
-  PhysicsImpostor,
   Scene,
   Vector3,
-  WebXRFeatureName,
 } from "@babylonjs/core";
-import { GUI3DManager, HolographicButton } from "@babylonjs/gui";
+import {
+  AdvancedDynamicTexture,
+  GUI3DManager,
+  HolographicButton,
+  TextBlock,
+} from "@babylonjs/gui";
 import "./style/style.scss";
 
 window.addEventListener("DOMContentLoaded", async () => {
@@ -66,6 +68,17 @@ window.addEventListener("DOMContentLoaded", async () => {
     button.pointerUpAnimation = () => {
       button.scaling = new Vector3(0.15, 0.15, 0.3);
     };
+
+    // 3d log text config
+
+    const logPlane = Mesh.CreatePlane("logPlane", 2, scene);
+    logPlane.position = new Vector3(0, 0.3, 1);
+    const advancedTexture = AdvancedDynamicTexture.CreateForMesh(logPlane, 1024, 1024);
+
+    const logTextBlock = new TextBlock("logTextBlock", "no log");
+    logTextBlock.color = "white";
+    logTextBlock.text = "hogeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
+    advancedTexture.addControl(logTextBlock);
 
     const videoElement = <HTMLVideoElement>document.getElementById("video");
     videoElement.autoplay = true;
