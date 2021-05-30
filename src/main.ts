@@ -5,9 +5,13 @@ import {
   Color3,
   Engine,
   HemisphericLight,
+  Matrix,
   Mesh,
+  MeshBuilder,
+  Quaternion,
   Scene,
   SceneLoader,
+  StandardMaterial,
   Vector3,
 } from "@babylonjs/core";
 import {
@@ -47,32 +51,30 @@ window.addEventListener("DOMContentLoaded", async () => {
     camera.minZ = 0.001;
 
     var light = new HemisphericLight("light1", new Vector3(1, 1, 0), scene);
-    light.intensity = 0.1;
+    light.intensity = 0.5;
 
+    // ==========================================
     // glb model import
+    // ==========================================
 
-    let rootMesh: Mesh;
+    let rootMesh: AbstractMesh;
 
     SceneLoader.AppendAsync(
       roomModelURL.replace("room.babylon", ""),
       "room.babylon",
-      scene,
-      (event) => {
-        if (event.lengthComputable) {
-          const progress = (100 * event.loaded) / event.total;
-          console.log(`model loaded: ${progress}`);
-        }
-      }
+      scene
     ).then((loadedScene) => {
-      console.log("model import done");
       loadedScene.meshes.forEach((mesh) => {
         if (mesh.name === "__root__") {
-          rootMesh = <Mesh>mesh;
+          rootMesh = mesh;
+          rootMesh.scaling = new Vector3(0.1, 0.1, -0.1);
         }
       });
     });
 
+    // ==========================================
     // 3d button settings
+    // ==========================================
 
     const anchor = new AbstractMesh("anchor", scene);
     anchor.scaling = new Vector3(2, 2, 2);
@@ -98,7 +100,9 @@ window.addEventListener("DOMContentLoaded", async () => {
       button.scaling = new Vector3(0.15, 0.15, 0.3);
     };
 
+    // ==========================================
     // 3d log text config
+    // ==========================================
 
     const logPlane = Mesh.CreatePlane("logPlane", 2, scene);
     logPlane.position = new Vector3(0.3, -0.3, 1);
@@ -131,6 +135,15 @@ window.addEventListener("DOMContentLoaded", async () => {
         videoCanvas.height = 720;
       });
 
+    // ==========================================
+    // immersal rest api fetch
+    // ==========================================
+    const testCube = MeshBuilder.CreateBox("testCube", { size: 0.015 }, scene);
+    const material = new StandardMaterial("mat", scene);
+    material.diffuseColor = new Color3(2, 0, 0);
+    testCube.material = material;
+    testCube.scaling.z *= 2;
+
     button.onPointerDownObservable.add(() => {
       videoCanvas.getContext("2d")!.drawImage(videoElement, 0, 0, 1270, 720);
       const imageURL = videoCanvas.toDataURL();
@@ -154,13 +167,49 @@ window.addEventListener("DOMContentLoaded", async () => {
       })
         .then((res) => res.json())
         .then((data) => {
-          const res = <ImmersalAPI.ImmersalLocalizeResponse>data;
-          console.log(JSON.stringify(res));
+          let res = <ImmersalAPI.ImmersalLocalizeResponse>data;
           logTextBlock.text = JSON.stringify(res, null, "\t");
+          const m = generateMatrixFromResponse(res);
+
+          // res = {
+          //   error: "none",
+          //   success: true,
+          //   map: 1,
+          //   px: -0.82981,
+          //   py: 0.3349169,
+          //   pz: -1.38664,
+          //   r00: 0.33488,
+          //   r01: -0.437701,
+          //   r02: 0.834428,
+          //   r10: 0.9195104,
+          //   r11: -0.0041612,
+          //   r12: -0.390856,
+          //   r20: 0.205801,
+          //   r21: 0.898157,
+          //   r22: 0.388535,
+          // };
+
+          if (m) {
+            testCube.position = new Vector3(
+              res.px,
+              res.py,
+              res.pz
+            ).multiplyByFloats(0.1, 0.1, 0.1);
+
+            const rotationMatrix = generateMatrixFromResponse(res);
+            if (rotationMatrix) {
+              testCube.rotation =
+                Quaternion.FromRotationMatrix(rotationMatrix)
+                .conjugate()
+                .toEulerAngles();
+            }
+          }
         });
     });
 
+    // ==========================================
     // webxr settings
+    // ==========================================
 
     await scene.createDefaultXRExperienceAsync({
       uiOptions: {
@@ -178,3 +227,45 @@ window.addEventListener("DOMContentLoaded", async () => {
     });
   }
 });
+
+const generateMatrixFromResponse = (
+  res: ImmersalAPI.ImmersalLocalizeResponse
+) => {
+  if (res.error === "none" && res.success && res.success === true) {
+    if (
+      res.r00 &&
+      res.r01 &&
+      res.r02 &&
+      res.px &&
+      res.px &&
+      res.r10 &&
+      res.r11 &&
+      res.r12 &&
+      res.py &&
+      res.r20 &&
+      res.r21 &&
+      res.r22 &&
+      res.pz
+    ) {
+      return Matrix.FromValues(
+        res.r00,
+        res.r01,
+        res.r02,
+        res.px,
+        res.r10,
+        res.r11,
+        res.r12,
+        res.py,
+        res.r20,
+        res.r21,
+        res.r22,
+        res.pz,
+        0,
+        0,
+        0,
+        1
+      );
+    }
+  }
+  return null;
+};
