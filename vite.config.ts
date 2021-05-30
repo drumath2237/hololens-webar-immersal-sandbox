@@ -1,5 +1,6 @@
-import { defineConfig } from "vite";
+import { defineConfig, loadEnv } from "vite";
 import * as fs from "fs";
+import dotenv from "dotenv";
 
 export default ({ command, mode }) => {
   if (mode === "production") {
@@ -13,7 +14,14 @@ export default ({ command, mode }) => {
   } else {
     console.log("for local...");
 
+    const envConf = dotenv.config({
+      path: "./.env.local",
+    });
+
     const config = defineConfig({
+      define: {
+        "process.env": { ...envConf.parsed },
+      },
       server: {
         https: {
           key: fs.readFileSync("./key.pem"),
