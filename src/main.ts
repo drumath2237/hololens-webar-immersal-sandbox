@@ -50,7 +50,7 @@ window.addEventListener("DOMContentLoaded", async () => {
 
     const anchor = new AbstractMesh("anchor", scene);
     anchor.scaling = new Vector3(2, 2, 2);
-    anchor.position = new Vector3(0, 0, 0);
+    anchor.position = new Vector3(1, -0.5, 0);
 
     const manager = new GUI3DManager(scene);
 
@@ -75,7 +75,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     // 3d log text config
 
     const logPlane = Mesh.CreatePlane("logPlane", 2, scene);
-    logPlane.position = new Vector3(0, 0.3, 1);
+    logPlane.position = new Vector3(0, -0.3, 1);
     const advancedTexture = AdvancedDynamicTexture.CreateForMesh(
       logPlane,
       1024,
@@ -84,8 +84,8 @@ window.addEventListener("DOMContentLoaded", async () => {
 
     const logTextBlock = new TextBlock("logTextBlock", "no log");
     logTextBlock.color = "white";
-    logTextBlock.text =
-      "hogeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
+    logTextBlock.text = "log text";
+    logTextBlock.resizeToFit = true;
     advancedTexture.addControl(logTextBlock);
 
     const videoElement = <HTMLVideoElement>document.getElementById("video");
@@ -101,41 +101,38 @@ window.addEventListener("DOMContentLoaded", async () => {
       })
       .then((stream) => {
         videoElement.srcObject = stream;
-        setTimeout(() => {
-          videoCanvas.width = 1270;
-          videoCanvas.height = 720;
-          button.imageUrl = videoCanvas.toDataURL();
-        }, 2000);
+        videoCanvas.width = 1270;
+        videoCanvas.height = 720;
       });
-
-    navigator.mediaDevices.enumerateDevices().then((infos) => {
-      console.log(infos);
-    });
 
     button.onPointerDownObservable.add(() => {
       videoCanvas.getContext("2d")!.drawImage(videoElement, 0, 0, 1270, 720);
-      // button.imageUrl = videoCanvas.toDataURL();
+      const imageURL = videoCanvas.toDataURL();
+
+      button.imageUrl = imageURL;
 
       const req: ImmersalAPI.ImmersalLocalizeRequest = {
-        token: "",
+        token: <string>process.env.IMMERSAL_TOKEN,
         fx: CameraIntrinsics.focalLength.x,
         fy: CameraIntrinsics.focalLength.y,
         ox: CameraIntrinsics.principalOffset.x,
         oy: CameraIntrinsics.principalOffset.y,
-        b64: videoCanvas.toDataURL(),
-        mapIds: [{ id: 0 }],
+        b64: imageURL.replace('data:image/png;base64,', ''),
+        mapIds: [{ id: Number(<string>process.env.MAP_ID) }],
       };
+
+      console.log(req);
+
+      button.text += "!";
+
       fetch(ImmersalAPI.immersalLocalizeURL, {
         method: "POST",
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "application/json",
-        },
         body: JSON.stringify(req),
       })
         .then((res) => res.json())
         .then((data) => {
-          logTextBlock.text = data;
+          logTextBlock.text = JSON.stringify(data, null, "\t");
+          console.log(data);
         });
     });
 

@@ -12,7 +12,8 @@
     "resolveJsonModule": true,
     "esModuleInterop": true,
     "types": [
-      "vite/client"
+      "vite/client",
+      "node"
     ],
     "noEmit": true,
     "noUnusedLocals": true,
