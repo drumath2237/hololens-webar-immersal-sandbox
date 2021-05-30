@@ -86,7 +86,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     button.text = "Button";
     button.imageUrl =
       "https://www.babylonjs-playground.com/textures/icons/Settings.png";
-    button.position = new Vector3(0, 0, 1);
+    button.position = new Vector3(0, -0.5, 1);
     button.scaling = new Vector3(0.15, 0.15, 0.3);
     button.tooltipText = "Holographic\nButton";
     button.backMaterial.albedoColor = new Color3(0.12, 0.171, 0.55);
@@ -101,7 +101,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     // 3d log text config
 
     const logPlane = Mesh.CreatePlane("logPlane", 2, scene);
-    logPlane.position = new Vector3(0, -0.3, 1);
+    logPlane.position = new Vector3(0.3, -0.3, 1);
     const advancedTexture = AdvancedDynamicTexture.CreateForMesh(
       logPlane,
       1024,
@@ -137,6 +137,7 @@ window.addEventListener("DOMContentLoaded", async () => {
 
       button.imageUrl = imageURL;
 
+      button.text += "!";
       const req: ImmersalAPI.ImmersalLocalizeRequest = {
         token: <string>process.env.IMMERSAL_TOKEN,
         fx: CameraIntrinsics.focalLength.x,
@@ -147,18 +148,15 @@ window.addEventListener("DOMContentLoaded", async () => {
         mapIds: [{ id: Number(<string>process.env.MAP_ID) }],
       };
 
-      console.log(req);
-
-      button.text += "!";
-
       fetch(ImmersalAPI.immersalLocalizeURL, {
         method: "POST",
         body: JSON.stringify(req),
       })
         .then((res) => res.json())
         .then((data) => {
-          logTextBlock.text = JSON.stringify(data, null, "\t");
-          console.log(data);
+          const res = <ImmersalAPI.ImmersalLocalizeResponse>data;
+          console.log(JSON.stringify(res));
+          logTextBlock.text = JSON.stringify(res, null, "\t");
         });
     });
 

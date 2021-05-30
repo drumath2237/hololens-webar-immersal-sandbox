@@ -15,20 +15,21 @@ interface ImmersalLocalizeRequest {
 }
 
 interface ImmersalLocalizeResponse {
-  success: boolean;
-  map: number;
-  px: number;
-  py: number;
-  pz: number;
-  r00: number;
-  r01: number;
-  r02: number;
-  r10: number;
-  r11: number;
-  r12: number;
-  r20: number;
-  r21: number;
-  r22: number;
+  error: string,
+  success?: boolean;
+  map?: number;
+  px?: number;
+  py?: number;
+  pz?: number;
+  r00?: number;
+  r01?: number;
+  r02?: number;
+  r10?: number;
+  r11?: number;
+  r12?: number;
+  r20?: number;
+  r21?: number;
+  r22?: number;
 }
 
 export {
