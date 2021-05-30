@@ -7,6 +7,7 @@ import {
   HemisphericLight,
   Mesh,
   Scene,
+  SceneLoader,
   Vector3,
 } from "@babylonjs/core";
 import {
@@ -19,6 +20,8 @@ import "./style/style.scss";
 
 import CameraIntrinsics from "./types/hololens-camera";
 import * as ImmersalAPI from "./types/immersal-api";
+
+import roomModelURL from "/models/room.babylon?url";
 
 window.addEventListener("DOMContentLoaded", async () => {
   const renderCanvas = <HTMLCanvasElement>(
@@ -44,7 +47,30 @@ window.addEventListener("DOMContentLoaded", async () => {
     camera.minZ = 0.001;
 
     var light = new HemisphericLight("light1", new Vector3(1, 1, 0), scene);
-    light.intensity = 1.0;
+    light.intensity = 0.1;
+
+    // glb model import
+
+    let rootMesh: Mesh;
+
+    SceneLoader.AppendAsync(
+      roomModelURL.replace("room.babylon", ""),
+      "room.babylon",
+      scene,
+      (event) => {
+        if (event.lengthComputable) {
+          const progress = (100 * event.loaded) / event.total;
+          console.log(`model loaded: ${progress}`);
+        }
+      }
+    ).then((loadedScene) => {
+      console.log("model import done");
+      loadedScene.meshes.forEach((mesh) => {
+        if (mesh.name === "__root__") {
+          rootMesh = <Mesh>mesh;
+        }
+      });
+    });
 
     // 3d button settings
 
@@ -117,7 +143,7 @@ window.addEventListener("DOMContentLoaded", async () => {
         fy: CameraIntrinsics.focalLength.y,
         ox: CameraIntrinsics.principalOffset.x,
         oy: CameraIntrinsics.principalOffset.y,
-        b64: imageURL.replace('data:image/png;base64,', ''),
+        b64: imageURL.replace("data:image/png;base64,", ""),
         mapIds: [{ id: Number(<string>process.env.MAP_ID) }],
       };
 
