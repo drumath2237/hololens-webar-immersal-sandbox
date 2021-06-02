@@ -11,9 +11,14 @@ import {
   Quaternion,
   Scene,
   SceneLoader,
+  Space,
   StandardMaterial,
+  TargetCamera,
+  TransformNode,
   Vector3,
+  WebXRCamera,
 } from "@babylonjs/core";
+import { meshUboDeclaration } from "@babylonjs/core/Shaders/ShadersInclude/meshUboDeclaration";
 import {
   AdvancedDynamicTexture,
   GUI3DManager,
@@ -57,7 +62,10 @@ window.addEventListener("DOMContentLoaded", async () => {
     // glb model import
     // ==========================================
 
-    let rootMesh: AbstractMesh;
+    let rootMesh = Mesh.CreateBox("rootBox", 1);
+    rootMesh.isVisible = false;
+    rootMesh.position = Vector3.Zero();
+    rootMesh.rotation = Quaternion.Identity().toEulerAngles();
 
     SceneLoader.AppendAsync(
       roomModelURL.replace("room.babylon", ""),
@@ -66,8 +74,8 @@ window.addEventListener("DOMContentLoaded", async () => {
     ).then((loadedScene) => {
       loadedScene.meshes.forEach((mesh) => {
         if (mesh.name === "__root__") {
-          rootMesh = mesh;
-          rootMesh.scaling = new Vector3(0.1, 0.1, -0.1);
+          mesh.setParent(rootMesh);
+          // rootMesh.scaling = new Vector3(0.1, 0.1, -0.1);
         }
       });
     });
@@ -118,6 +126,17 @@ window.addEventListener("DOMContentLoaded", async () => {
     logTextBlock.resizeToFit = true;
     advancedTexture.addControl(logTextBlock);
 
+    // ==========================================
+    // webxr settings
+    // ==========================================
+
+    const xr = await scene.createDefaultXRExperienceAsync({
+      uiOptions: {
+        sessionMode: "immersive-ar",
+        referenceSpaceType: "unbounded",
+      },
+    });
+
     const videoElement = <HTMLVideoElement>document.getElementById("video");
     videoElement.autoplay = true;
     const videoCanvas = <HTMLCanvasElement>(
@@ -138,11 +157,15 @@ window.addEventListener("DOMContentLoaded", async () => {
     // ==========================================
     // immersal rest api fetch
     // ==========================================
-    const testCube = MeshBuilder.CreateBox("testCube", { size: 0.015 }, scene);
+    const testCube = MeshBuilder.CreateBox("testCube", { size: 0.15 }, scene);
     const material = new StandardMaterial("mat", scene);
     material.diffuseColor = new Color3(2, 0, 0);
     testCube.material = material;
     testCube.scaling.z *= 2;
+
+    scene.onBeforeRenderObservable.add(() => {
+      logTextBlock.text = `${(<TargetCamera>scene.activeCamera)?.rotation}`;
+    });
 
     button.onPointerDownObservable.add(() => {
       videoCanvas.getContext("2d")!.drawImage(videoElement, 0, 0, 1270, 720);
@@ -161,6 +184,92 @@ window.addEventListener("DOMContentLoaded", async () => {
         mapIds: [{ id: Number(<string>process.env.MAP_ID) }],
       };
 
+      const positionWhenRequest = camera.position.clone();
+      const rotationWhenRequest = (<TargetCamera>scene.activeCamera)?.rotation;
+
+      if(!rotationWhenRequest) return;
+
+      let rotMatrixWhenRequest = new Matrix();
+      // Quaternion.FromEulerVector(rotationWhenRequest).toRotationMatrix(
+      //   rotMatrixWhenRequest
+      // );
+
+      Matrix.FromQuaternionToRef(
+        Quaternion.FromEulerVector(rotationWhenRequest),
+        rotMatrixWhenRequest
+      );
+
+      // ================ test with dummy data =================
+      // const res = {
+      //   error: "none",
+      //   success: true,
+      //   map: 1,
+      //   px: -0.82981,
+      //   py: 0.3349169,
+      //   pz: -1.38664,
+      //   r00: 0.33488,
+      //   r01: -0.437701,
+      //   r02: 0.834428,
+      //   r10: 0.9195104,
+      //   r11: -0.0041612,
+      //   r12: -0.390856,
+      //   r20: 0.205801,
+      //   r21: 0.898157,
+      //   r22: 0.388535,
+      // };
+
+      // const m = generateMatrixFromResponse(res);
+      // if (m) {
+      //   // testCube.position = new Vector3(res.px, res.py, res.pz); //.multiplyByFloats(0.1, 0.1, 0.1);
+
+      //   // testCube.rotation = Quaternion.FromRotationMatrix(m)
+      //   //   .conjugate()
+      //   //   .toEulerAngles();
+
+      //   // let rotQuaternion = Quaternion.Identity();
+      //   // m.decompose(undefined, rotQuaternion, undefined);
+      //   // const rotVec = rotQuaternion.conjugate().toEulerAngles(); //Quaternion.FromRotationMatrix(m).toEulerAngles();
+      //   // rootMesh.rotation = new Vector3(rotVec.z, rotVec.y, rotVec.x)
+      //   // rootMesh.rotate(new Vector3(0,0,1), Math.PI/2, Space.WORLD);
+
+      //   // rootMesh.position = new Vector3(res.px, res.py, res.pz).negate();
+
+      //   // rootMesh.setParent(testCube);
+      //   // const cubeMatrix = testCube.getWorldMatrix();
+      //   // // cubeMatrix.copyFrom(m.transpose());
+      //   // cubeMatrix.multiplyToRef(m.transpose(), cubeMatrix);
+
+      //   // const rootMeshMatrix = rootMesh.getPoseMatrix();
+      //   // rootMeshMatrix.multiplyToRef(m.transpose().invert(), rootMeshMatrix);
+
+      //   const scaleNagate = Matrix.FromValues(
+      //     -1,0,0,0,
+      //     0,-1,0,0,
+      //     0,0,-1,0,
+      //     0,0,0,1,
+      //   );
+
+      //   const transXY =Matrix.FromValues(
+      //     0,1,0,0,
+      //     -1,0,0,0,
+      //     0,0,1,0,
+      //     0,0,0,1
+      //   );
+
+      //   rootMesh.getDescendants().forEach((node)=>{
+      //     const maaa = node.getWorldMatrix();
+      //     // maaa.copyFrom(m.transpose().multiply(scaleNagate).invert());
+      //     // maaa.toggleModelMatrixHandInPlace();
+      //     maaa.multiplyToRef(m.transpose().invert().multiply(transXY), maaa);
+
+      //     const maaMat = (<Mesh>node).material;
+      //     if(maaMat){
+      //       maaMat.backFaceCulling = false;
+      //     }
+      //   })
+      // }
+      // ================ test with dummy data =================
+
       fetch(ImmersalAPI.immersalLocalizeURL, {
         method: "POST",
         body: JSON.stringify(req),
@@ -169,53 +278,74 @@ window.addEventListener("DOMContentLoaded", async () => {
         .then((data) => {
           let res = <ImmersalAPI.ImmersalLocalizeResponse>data;
           logTextBlock.text = JSON.stringify(res, null, "\t");
+
           const m = generateMatrixFromResponse(res);
-
-          // res = {
-          //   error: "none",
-          //   success: true,
-          //   map: 1,
-          //   px: -0.82981,
-          //   py: 0.3349169,
-          //   pz: -1.38664,
-          //   r00: 0.33488,
-          //   r01: -0.437701,
-          //   r02: 0.834428,
-          //   r10: 0.9195104,
-          //   r11: -0.0041612,
-          //   r12: -0.390856,
-          //   r20: 0.205801,
-          //   r21: 0.898157,
-          //   r22: 0.388535,
-          // };
-
           if (m) {
-            testCube.position = new Vector3(
-              res.px,
-              res.py,
-              res.pz
-            ).multiplyByFloats(0.1, 0.1, 0.1);
+            // rootMeshMatrix.multiplyToRef(m.transpose().invert(), rootMeshMatrix);
 
-            const rotationMatrix = generateMatrixFromResponse(res);
-            if (rotationMatrix) {
-              testCube.rotation =
-                Quaternion.FromRotationMatrix(rotationMatrix)
-                .conjugate()
-                .toEulerAngles();
-            }
+            const scaleNagate = Matrix.FromValues(
+              -1,
+              0,
+              0,
+              0,
+              0,
+              -1,
+              0,
+              0,
+              0,
+              0,
+              -1,
+              0,
+              0,
+              0,
+              0,
+              1
+            );
+
+            const transXY = Matrix.FromValues(
+              0,
+              1,
+              0,
+              0,
+              -1,
+              0,
+              0,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1
+            );
+
+            rootMesh.getDescendants().forEach((node) => {
+              const maaa = node.getWorldMatrix();
+              // maaa.copyFrom(Matrix.Identity());
+              maaa.multiplyToRef(
+                m
+                  .transpose()
+                  .invert()
+                  .multiply(rotMatrixWhenRequest)
+                  .multiply(
+                    Matrix.Translation(
+                      positionWhenRequest.x,
+                      positionWhenRequest.y,
+                      positionWhenRequest.z
+                    ).multiply(transXY)
+                  ),
+                maaa
+              );
+
+              const maaMat = (<Mesh>node).material;
+              if (maaMat) {
+                maaMat.backFaceCulling = false;
+              }
+            });
           }
         });
-    });
-
-    // ==========================================
-    // webxr settings
-    // ==========================================
-
-    await scene.createDefaultXRExperienceAsync({
-      uiOptions: {
-        sessionMode: "immersive-ar",
-        referenceSpaceType: "unbounded",
-      },
     });
 
     engine.runRenderLoop(() => {
