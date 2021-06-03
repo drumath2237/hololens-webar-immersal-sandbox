@@ -1,7 +1,5 @@
 import {
   AbstractMesh,
-  ArcRotateCamera,
-  Axis,
   CannonJSPlugin,
   Color3,
   DeviceOrientationCamera,
@@ -15,12 +13,9 @@ import {
   SceneLoader,
   Space,
   StandardMaterial,
-  TargetCamera,
   TransformNode,
   Vector3,
-  WebXRCamera,
 } from "@babylonjs/core";
-import { meshUboDeclaration } from "@babylonjs/core/Shaders/ShadersInclude/meshUboDeclaration";
 import {
   AdvancedDynamicTexture,
   GUI3DManager,
@@ -172,17 +167,19 @@ window.addEventListener("DOMContentLoaded", async () => {
     const testCube = MeshBuilder.CreateBox("testCube", { size: 0.15 }, scene);
     const material = new StandardMaterial("mat", scene);
     material.diffuseColor = new Color3(2, 0, 0);
+    material.backFaceCulling = true;
     testCube.material = material;
     testCube.scaling.z *= 2;
+    testCube.isVisible = false;
 
     testCube.onBeforeRenderObservable.add(() => {
-      const direction = xr.baseExperience.camera
-        .getForwardRay()
-        .direction.clone();
-      testCube.rotation.x = -direction.y;
-      testCube.rotation.y = direction.x;
-
-      // logTextBlock.text = `${testCube.rotation}`;
+      // const direction = xr.baseExperience.camera
+      //   .getForwardRay()
+      //   .direction.clone();
+      // testCube.rotation.x = -direction.y;
+      // testCube.rotation.y = direction.x;
+      // const rot = xr.baseExperience.camera.rotationQuaternion.toEulerAngles();
+      // logTextBlock.text = `${rot}`;
     });
 
     window.ondeviceorientation = (ev) => {
@@ -209,9 +206,15 @@ window.addEventListener("DOMContentLoaded", async () => {
       };
 
       const positionWhenRequest = camera.position.clone();
-      const rotationWhenRequest = testCube.rotation.clone(); //cameraQuaternion.toEulerAngles();
+      const rotationWhenRequest = xr.baseExperience.camera.rotationQuaternion
+        .toEulerAngles()
+        .clone(); //cameraQuaternion.toEulerAngles();
 
-      let rotMatrixWhenRequest = new Matrix();
+      let rotMatrixWhenRequest = new Matrix(); //.RotationYawPitchRoll(
+      //   rotationWhenRequest.y,
+      //   rotationWhenRequest.x,
+      //   rotationWhenRequest.z
+      // );
       Quaternion.FromEulerVector(rotationWhenRequest).toRotationMatrix(
         rotMatrixWhenRequest
       );
@@ -310,7 +313,28 @@ window.addEventListener("DOMContentLoaded", async () => {
             );
 
             rootMesh.getDescendants().forEach((node) => {
-              const maaa = node.getWorldMatrix();
+              const traNode = <TransformNode>node;
+              if (!traNode) return;
+
+              const worldMatrix = traNode.getWorldMatrix();
+
+              // traNode.setPivotPoint(Vector3.Zero(), Space.WORLD);
+
+              worldMatrix.multiplyToRef(
+                Matrix.RotationY(Math.PI / 2).multiply(
+                  m.transpose().invert().multiply(transXY)
+                ), //.multiply(rotMatrixWhenRequest),
+                worldMatrix
+              );
+
+              // setTimeout(() => {
+              //   setInterval(() => {
+              //     const maa = Matrix.RotationY(Math.PI/12);
+              //     worldMatrix.multiplyToRef(maa, worldMatrix);
+              //   }, 1000);
+              // }, 1000);
+
+              // const maaa = node.getWorldMatrix();
               // maaa.multiplyToRef(
               //   m.transpose().invert().multiply(transXY),
               //   // .multiply(
@@ -324,24 +348,17 @@ window.addEventListener("DOMContentLoaded", async () => {
               //   maaa
               // );
 
-              logTextBlock.text = `${rotMatrixWhenRequest.m.join("\n")}`;
+              // logTextBlock.text = `${rotMatrixWhenRequest.m.join("\n")}`;
 
-              rotMatrixWhenRequest.multiplyToRef(
-                maaa.multiply(m.transpose().invert().multiply(transXY)),
-                maaa
-              );
-
-              // const operatorMatrix = Matrix.Translation(
-              //   positionWhenRequest.x,
-              //   positionWhenRequest.y,
-              //   positionWhenRequest.z
-              // )
-              //   .multiply(rotMatrixWhenRequest)
-              //   .multiply(transXY.multiply(m.transpose().invert()));
-
-              //   operatorMatrix.multiplyToRef(maaa, maaa);
-
-              // m.transpose().multiplyToRef(maaa, maaa);
+              // setTimeout(() => {
+              //   setInterval(() => {
+              //     traMaaaa.multiplyToRef(Matrix.RotationX(Math.PI / 12), traMaaaa);
+              //   }, 1000);
+              // }, 1000);
+              // rotMatrixWhenRequest.multiplyToRef(
+              //   maaa.multiply(m.transpose().invert().multiply(transXY)),
+              //   maaa
+              // );
             });
           }
         });
