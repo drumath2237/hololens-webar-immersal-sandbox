@@ -11,9 +11,7 @@ import {
   Quaternion,
   Scene,
   SceneLoader,
-  Space,
   StandardMaterial,
-  TransformNode,
   Vector3,
 } from "@babylonjs/core";
 import {
@@ -164,13 +162,13 @@ window.addEventListener("DOMContentLoaded", async () => {
     // ==========================================
     // immersal rest api fetch
     // ==========================================
-    const testCube = MeshBuilder.CreateBox("testCube", { size: 0.15 }, scene);
+    const testCube = MeshBuilder.CreateBox("testCube", { size: 0.05 }, scene);
     const material = new StandardMaterial("mat", scene);
     material.diffuseColor = new Color3(2, 0, 0);
     material.backFaceCulling = true;
     testCube.material = material;
     testCube.scaling.z *= 2;
-    testCube.isVisible = false;
+    // testCube.isVisible = false;
 
     testCube.onBeforeRenderObservable.add(() => {
       // const direction = xr.baseExperience.camera
@@ -205,10 +203,13 @@ window.addEventListener("DOMContentLoaded", async () => {
         mapIds: [{ id: Number(<string>process.env.MAP_ID) }],
       };
 
-      const positionWhenRequest = camera.position.clone();
+      const positionWhenRequest = xr.baseExperience.camera.globalPosition;
       const rotationWhenRequest = xr.baseExperience.camera.rotationQuaternion
         .toEulerAngles()
         .clone(); //cameraQuaternion.toEulerAngles();
+
+      const cameraTransformMatrix = scene.activeCamera?.getWorldMatrix();
+      if(!cameraTransformMatrix) return;
 
       let rotMatrixWhenRequest = new Matrix(); //.RotationYawPitchRoll(
       //   rotationWhenRequest.y,
@@ -313,17 +314,41 @@ window.addEventListener("DOMContentLoaded", async () => {
             );
 
             rootMesh.getDescendants().forEach((node) => {
-              const traNode = <TransformNode>node;
-              if (!traNode) return;
+              // const traNode = <TransformNode>node;
+              // if (!traNode) return;
 
-              const worldMatrix = traNode.getWorldMatrix();
+              const worldMatrix = node.getWorldMatrix();
 
               // traNode.setPivotPoint(Vector3.Zero(), Space.WORLD);
 
+              // const transformMatrix = Matrix.Translation(
+              //   positionWhenRequest.x,
+              //   positionWhenRequest.y,
+              //   positionWhenRequest.z
+              // );
+
+              // const negativeTransformMatrix = Matrix.Translation(
+              //   -positionWhenRequest.x,
+              //   -positionWhenRequest.y,
+              //   0
+              // );
+
               worldMatrix.multiplyToRef(
-                Matrix.RotationY(Math.PI / 2).multiply(
-                  m.transpose().invert().multiply(transXY)
-                ), //.multiply(rotMatrixWhenRequest),
+                m
+                  .transpose()
+                  .invert()
+                  .multiply(transXY)
+                  // カメラ基準の微調整(せこい)
+                  .multiply(
+                    Matrix.Translation(
+                      0,0,-0.5
+                    )
+                  )
+                  .multiply(
+                    Matrix.RotationX(Math.PI/24)
+                  )
+                  .multiply(cameraTransformMatrix)
+                  ,
                 worldMatrix
               );
 
