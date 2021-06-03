@@ -344,8 +344,21 @@ window.addEventListener("DOMContentLoaded", async () => {
                       0,0,-0.5
                     )
                   )
+                  // .multiply(
+                  //   Matrix.RotationX(Math.PI/24)
+                  // )
+                  // .multiply(
+                  //   Matrix.RotationZ(
+                  //     Math.PI/27
+                  //   )
+                  // )
+                  // .multiply(
+                  //   Matrix.RotationY(Math.PI/40)
+                  // )
                   .multiply(
-                    Matrix.RotationX(Math.PI/24)
+                    Matrix.RotationYawPitchRoll(
+                      Math.PI/30, Math.PI/21, 0
+                    )
                   )
                   .multiply(cameraTransformMatrix)
                   ,
