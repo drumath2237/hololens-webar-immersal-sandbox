@@ -1,5 +1,6 @@
 import {
   AbstractMesh,
+  ArcRotateCamera,
   CannonJSPlugin,
   Color3,
   DeviceOrientationCamera,
@@ -38,24 +39,24 @@ window.addEventListener("DOMContentLoaded", async () => {
 
     scene.enablePhysics(new Vector3(0, -9.81, 0), new CannonJSPlugin());
 
-    // const camera = new ArcRotateCamera(
-    //   "camera",
-    //   -Math.PI / 2,
-    //   Math.PI / 2,
-    //   0.5,
-    //   Vector3.Zero(),
-    //   scene,
-    //   true
-    // );
-    // camera.attachControl();
-    // camera.minZ = 0.001;
-
-    const camera = new DeviceOrientationCamera(
-      "dev-ori",
+    const camera = new ArcRotateCamera(
+      "camera",
+      -Math.PI / 2,
+      Math.PI / 2,
+      0.5,
       Vector3.Zero(),
-      scene
+      scene,
+      true
     );
-    camera.minZ = 0.01;
+    camera.attachControl();
+    camera.minZ = 0.001;
+
+    // const camera = new DeviceOrientationCamera(
+    //   "dev-ori",
+    //   Vector3.Zero(),
+    //   scene
+    // );
+    // camera.minZ = 0.01;
 
     var light = new HemisphericLight("light1", new Vector3(1, 1, 0), scene);
     light.intensity = 0.5;
@@ -69,6 +70,12 @@ window.addEventListener("DOMContentLoaded", async () => {
     rootMesh.position = Vector3.Zero();
     rootMesh.rotation = Quaternion.Identity().toEulerAngles();
 
+    const wireframeMaterial = new StandardMaterial('wireframe', scene);
+    wireframeMaterial.wireframe = true;
+    wireframeMaterial.diffuseColor = Color3.Black();
+    wireframeMaterial.emissiveColor = new Color3(0,1.5,1.5);
+    wireframeMaterial.backFaceCulling = false;
+
     SceneLoader.AppendAsync(
       roomModelURL.replace("room.babylon", ""),
       "room.babylon",
@@ -78,9 +85,10 @@ window.addEventListener("DOMContentLoaded", async () => {
         mesh.enablePointerMoveEvents = false;
         if (mesh.name === "__root__") {
           mesh.setParent(rootMesh);
-        }
-        if (mesh.material) {
-          mesh.material.backFaceCulling = false;
+          mesh.getDescendants().forEach((n)=>{
+            if(!<Mesh>n || !(<Mesh>n).material) return;
+            (<Mesh>n).material = wireframeMaterial;
+          })
         }
       });
     });
