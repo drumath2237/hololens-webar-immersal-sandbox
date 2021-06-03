@@ -1,8 +1,10 @@
 import {
   AbstractMesh,
   ArcRotateCamera,
+  Axis,
   CannonJSPlugin,
   Color3,
+  DeviceOrientationCamera,
   Engine,
   HemisphericLight,
   Matrix,
@@ -43,17 +45,24 @@ window.addEventListener("DOMContentLoaded", async () => {
 
     scene.enablePhysics(new Vector3(0, -9.81, 0), new CannonJSPlugin());
 
-    const camera = new ArcRotateCamera(
-      "camera",
-      -Math.PI / 2,
-      Math.PI / 2,
-      0.5,
+    // const camera = new ArcRotateCamera(
+    //   "camera",
+    //   -Math.PI / 2,
+    //   Math.PI / 2,
+    //   0.5,
+    //   Vector3.Zero(),
+    //   scene,
+    //   true
+    // );
+    // camera.attachControl();
+    // camera.minZ = 0.001;
+
+    const camera = new DeviceOrientationCamera(
+      "dev-ori",
       Vector3.Zero(),
-      scene,
-      true
+      scene
     );
-    camera.attachControl();
-    camera.minZ = 0.001;
+    camera.minZ = 0.01;
 
     var light = new HemisphericLight("light1", new Vector3(1, 1, 0), scene);
     light.intensity = 0.5;
@@ -73,9 +82,12 @@ window.addEventListener("DOMContentLoaded", async () => {
       scene
     ).then((loadedScene) => {
       loadedScene.meshes.forEach((mesh) => {
+        mesh.enablePointerMoveEvents = false;
         if (mesh.name === "__root__") {
           mesh.setParent(rootMesh);
-          // rootMesh.scaling = new Vector3(0.1, 0.1, -0.1);
+        }
+        if (mesh.material) {
+          mesh.material.backFaceCulling = false;
         }
       });
     });
@@ -163,9 +175,21 @@ window.addEventListener("DOMContentLoaded", async () => {
     testCube.material = material;
     testCube.scaling.z *= 2;
 
-    scene.onBeforeRenderObservable.add(() => {
-      logTextBlock.text = `${(<TargetCamera>scene.activeCamera)?.rotation}`;
+    testCube.onBeforeRenderObservable.add(() => {
+      const direction = xr.baseExperience.camera
+        .getForwardRay()
+        .direction.clone();
+      testCube.rotation.x = -direction.y;
+      testCube.rotation.y = direction.x;
+
+      // logTextBlock.text = `${testCube.rotation}`;
     });
+
+    window.ondeviceorientation = (ev) => {
+      if (ev.alpha && ev.beta && ev.gamma) {
+        testCube.rotation = new Vector3(ev.alpha, ev.beta, ev.gamma);
+      }
+    };
 
     button.onPointerDownObservable.add(() => {
       videoCanvas.getContext("2d")!.drawImage(videoElement, 0, 0, 1270, 720);
@@ -185,90 +209,75 @@ window.addEventListener("DOMContentLoaded", async () => {
       };
 
       const positionWhenRequest = camera.position.clone();
-      const rotationWhenRequest = (<TargetCamera>scene.activeCamera)?.rotation;
-
-      if(!rotationWhenRequest) return;
+      const rotationWhenRequest = testCube.rotation.clone(); //cameraQuaternion.toEulerAngles();
 
       let rotMatrixWhenRequest = new Matrix();
-      // Quaternion.FromEulerVector(rotationWhenRequest).toRotationMatrix(
-      //   rotMatrixWhenRequest
-      // );
-
-      Matrix.FromQuaternionToRef(
-        Quaternion.FromEulerVector(rotationWhenRequest),
+      Quaternion.FromEulerVector(rotationWhenRequest).toRotationMatrix(
         rotMatrixWhenRequest
       );
 
-      // ================ test with dummy data =================
-      // const res = {
-      //   error: "none",
-      //   success: true,
-      //   map: 1,
-      //   px: -0.82981,
-      //   py: 0.3349169,
-      //   pz: -1.38664,
-      //   r00: 0.33488,
-      //   r01: -0.437701,
-      //   r02: 0.834428,
-      //   r10: 0.9195104,
-      //   r11: -0.0041612,
-      //   r12: -0.390856,
-      //   r20: 0.205801,
-      //   r21: 0.898157,
-      //   r22: 0.388535,
-      // };
-
-      // const m = generateMatrixFromResponse(res);
-      // if (m) {
-      //   // testCube.position = new Vector3(res.px, res.py, res.pz); //.multiplyByFloats(0.1, 0.1, 0.1);
-
-      //   // testCube.rotation = Quaternion.FromRotationMatrix(m)
-      //   //   .conjugate()
-      //   //   .toEulerAngles();
-
-      //   // let rotQuaternion = Quaternion.Identity();
-      //   // m.decompose(undefined, rotQuaternion, undefined);
-      //   // const rotVec = rotQuaternion.conjugate().toEulerAngles(); //Quaternion.FromRotationMatrix(m).toEulerAngles();
-      //   // rootMesh.rotation = new Vector3(rotVec.z, rotVec.y, rotVec.x)
-      //   // rootMesh.rotate(new Vector3(0,0,1), Math.PI/2, Space.WORLD);
-
-      //   // rootMesh.position = new Vector3(res.px, res.py, res.pz).negate();
-
-      //   // rootMesh.setParent(testCube);
-      //   // const cubeMatrix = testCube.getWorldMatrix();
-      //   // // cubeMatrix.copyFrom(m.transpose());
-      //   // cubeMatrix.multiplyToRef(m.transpose(), cubeMatrix);
-
-      //   // const rootMeshMatrix = rootMesh.getPoseMatrix();
-      //   // rootMeshMatrix.multiplyToRef(m.transpose().invert(), rootMeshMatrix);
-
-      //   const scaleNagate = Matrix.FromValues(
-      //     -1,0,0,0,
-      //     0,-1,0,0,
-      //     0,0,-1,0,
-      //     0,0,0,1,
-      //   );
-
-      //   const transXY =Matrix.FromValues(
-      //     0,1,0,0,
-      //     -1,0,0,0,
-      //     0,0,1,0,
-      //     0,0,0,1
-      //   );
-
-      //   rootMesh.getDescendants().forEach((node)=>{
-      //     const maaa = node.getWorldMatrix();
-      //     // maaa.copyFrom(m.transpose().multiply(scaleNagate).invert());
-      //     // maaa.toggleModelMatrixHandInPlace();
-      //     maaa.multiplyToRef(m.transpose().invert().multiply(transXY), maaa);
-
-      //     const maaMat = (<Mesh>node).material;
-      //     if(maaMat){
-      //       maaMat.backFaceCulling = false;
-      //     }
-      //   })
-      // }
-      // ================ test with dummy data =================
+      {
+        // ================ test with dummy data =================
+        // const res = {
+        //   error: "none",
+        //   success: true,
+        //   map: 1,
+        //   px: -0.82981,
+        //   py: 0.3349169,
+        //   pz: -1.38664,
+        //   r00: 0.33488,
+        //   r01: -0.437701,
+        //   r02: 0.834428,
+        //   r10: 0.9195104,
+        //   r11: -0.0041612,
+        //   r12: -0.390856,
+        //   r20: 0.205801,
+        //   r21: 0.898157,
+        //   r22: 0.388535,
+        // };
+        // const m = generateMatrixFromResponse(res);
+        // if (m) {
+        //   // testCube.position = new Vector3(res.px, res.py, res.pz); //.multiplyByFloats(0.1, 0.1, 0.1);
+        //   // testCube.rotation = Quaternion.FromRotationMatrix(m)
+        //   //   .conjugate()
+        //   //   .toEulerAngles();
+        //   // let rotQuaternion = Quaternion.Identity();
+        //   // m.decompose(undefined, rotQuaternion, undefined);
+        //   // const rotVec = rotQuaternion.conjugate().toEulerAngles(); //Quaternion.FromRotationMatrix(m).toEulerAngles();
+        //   // rootMesh.rotation = new Vector3(rotVec.z, rotVec.y, rotVec.x)
+        //   // rootMesh.rotate(new Vector3(0,0,1), Math.PI/2, Space.WORLD);
+        //   // rootMesh.position = new Vector3(res.px, res.py, res.pz).negate();
+        //   // rootMesh.setParent(testCube);
+        //   // const cubeMatrix = testCube.getWorldMatrix();
+        //   // // cubeMatrix.copyFrom(m.transpose());
+        //   // cubeMatrix.multiplyToRef(m.transpose(), cubeMatrix);
+        //   // const rootMeshMatrix = rootMesh.getPoseMatrix();
+        //   // rootMeshMatrix.multiplyToRef(m.transpose().invert(), rootMeshMatrix);
+        //   const scaleNagate = Matrix.FromValues(
+        //     -1,0,0,0,
+        //     0,-1,0,0,
+        //     0,0,-1,0,
+        //     0,0,0,1,
+        //   );
+        //   const transXY =Matrix.FromValues(
+        //     0,1,0,0,
+        //     -1,0,0,0,
+        //     0,0,1,0,
+        //     0,0,0,1
+        //   );
+        //   rootMesh.getDescendants().forEach((node)=>{
+        //     const maaa = node.getWorldMatrix();
+        //     // maaa.copyFrom(m.transpose().multiply(scaleNagate).invert());
+        //     // maaa.toggleModelMatrixHandInPlace();
+        //     maaa.multiplyToRef(m.transpose().invert().multiply(transXY), maaa);
+        //     const maaMat = (<Mesh>node).material;
+        //     if(maaMat){
+        //       maaMat.backFaceCulling = false;
+        //     }
+        //   })
+        // }
+        // ================ test with dummy data =================
+      }
 
       fetch(ImmersalAPI.immersalLocalizeURL, {
         method: "POST",
@@ -281,27 +290,6 @@ window.addEventListener("DOMContentLoaded", async () => {
 
           const m = generateMatrixFromResponse(res);
           if (m) {
-            // rootMeshMatrix.multiplyToRef(m.transpose().invert(), rootMeshMatrix);
-
-            const scaleNagate = Matrix.FromValues(
-              -1,
-              0,
-              0,
-              0,
-              0,
-              -1,
-              0,
-              0,
-              0,
-              0,
-              -1,
-              0,
-              0,
-              0,
-              0,
-              1
-            );
-
             const transXY = Matrix.FromValues(
               0,
               1,
@@ -323,26 +311,37 @@ window.addEventListener("DOMContentLoaded", async () => {
 
             rootMesh.getDescendants().forEach((node) => {
               const maaa = node.getWorldMatrix();
-              // maaa.copyFrom(Matrix.Identity());
-              maaa.multiplyToRef(
-                m
-                  .transpose()
-                  .invert()
-                  .multiply(rotMatrixWhenRequest)
-                  .multiply(
-                    Matrix.Translation(
-                      positionWhenRequest.x,
-                      positionWhenRequest.y,
-                      positionWhenRequest.z
-                    ).multiply(transXY)
-                  ),
+              // maaa.multiplyToRef(
+              //   m.transpose().invert().multiply(transXY),
+              //   // .multiply(
+              //   //   Matrix.Translation(
+              //   //     positionWhenRequest.x,
+              //   //     positionWhenRequest.y,
+              //   //     positionWhenRequest.z
+              //   //   )
+              //   // )
+              //   // .multiply(rotMatrixWhenRequest)
+              //   maaa
+              // );
+
+              logTextBlock.text = `${rotMatrixWhenRequest.m.join("\n")}`;
+
+              rotMatrixWhenRequest.multiplyToRef(
+                maaa.multiply(m.transpose().invert().multiply(transXY)),
                 maaa
               );
 
-              const maaMat = (<Mesh>node).material;
-              if (maaMat) {
-                maaMat.backFaceCulling = false;
-              }
+              // const operatorMatrix = Matrix.Translation(
+              //   positionWhenRequest.x,
+              //   positionWhenRequest.y,
+              //   positionWhenRequest.z
+              // )
+              //   .multiply(rotMatrixWhenRequest)
+              //   .multiply(transXY.multiply(m.transpose().invert()));
+
+              //   operatorMatrix.multiplyToRef(maaa, maaa);
+
+              // m.transpose().multiplyToRef(maaa, maaa);
             });
           }
         });
