@@ -62,10 +62,10 @@ window.addEventListener("DOMContentLoaded", async () => {
     rootMesh.position = Vector3.Zero();
     rootMesh.rotation = Quaternion.Identity().toEulerAngles();
 
-    const wireframeMaterial = new StandardMaterial('wireframe', scene);
+    const wireframeMaterial = new StandardMaterial("wireframe", scene);
     wireframeMaterial.wireframe = true;
     wireframeMaterial.diffuseColor = Color3.Black();
-    wireframeMaterial.emissiveColor = new Color3(0,1.5,1.5);
+    wireframeMaterial.emissiveColor = new Color3(0, 1.5, 1.5);
     wireframeMaterial.backFaceCulling = false;
 
     SceneLoader.AppendAsync(
@@ -77,10 +77,10 @@ window.addEventListener("DOMContentLoaded", async () => {
         mesh.enablePointerMoveEvents = false;
         if (mesh.name === "__root__") {
           mesh.setParent(rootMesh);
-          mesh.getDescendants().forEach((n)=>{
-            if(!<Mesh>n || !(<Mesh>n).material) return;
+          mesh.getDescendants().forEach((n) => {
+            if (!(<Mesh>n) || !(<Mesh>n).material) return;
             (<Mesh>n).material = wireframeMaterial;
-          })
+          });
         }
       });
     });
@@ -170,7 +170,6 @@ window.addEventListener("DOMContentLoaded", async () => {
     testCube.scaling.z *= 2;
     // testCube.isVisible = false;
 
-
     window.ondeviceorientation = (ev) => {
       if (ev.alpha && ev.beta && ev.gamma) {
         testCube.rotation = new Vector3(ev.alpha, ev.beta, ev.gamma);
@@ -195,7 +194,7 @@ window.addEventListener("DOMContentLoaded", async () => {
       };
 
       const cameraTransformMatrix = scene.activeCamera?.getWorldMatrix();
-      if(!cameraTransformMatrix) return;
+      if (!cameraTransformMatrix) return;
 
       fetch(ImmersalAPI.immersalLocalizeURL, {
         method: "POST",
@@ -209,22 +208,10 @@ window.addEventListener("DOMContentLoaded", async () => {
           const m = generateMatrixFromResponse(res);
           if (m) {
             const transXY = Matrix.FromValues(
-              0,
-              1,
-              0,
-              0,
-              -1,
-              0,
-              0,
-              0,
-              0,
-              0,
-              1,
-              0,
-              0,
-              0,
-              0,
-              1
+              0,1,0,0,
+              -1,0,0,0,
+              0,0,1,0,
+              0,0,0,1,
             );
 
             rootMesh.getDescendants().forEach((node) => {
@@ -252,6 +239,11 @@ window.addEventListener("DOMContentLoaded", async () => {
                 worldMatrix
               );
 
+            //   worldMatrix.copyFrom(
+            //     cameraTransformMatrix
+            //       .multiply(m.transpose().invert().multiply(transXY))
+            //       .multiply(worldMatrix)
+            //   );
             });
           }
         });
